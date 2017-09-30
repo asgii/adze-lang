@@ -1,0 +1,19 @@
+int func(int a, int b)
+{
+	int c;
+
+	c = a + b;
+
+	return c;
+}
+
+void func2()
+{
+//	int a = 123; //Yet to do
+
+	int d;
+
+	int e = d;
+
+//	int e = func(a, b); //Yet to do
+}
