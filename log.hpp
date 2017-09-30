@@ -5,8 +5,10 @@
 #include <iostream>
 
 /*
+TODO
 Each token should have a place in buffer, a line and a char number.
 How would the generator know though?
+It could if an Expression carried the (first) token along with it.
 */
 
 class Error
