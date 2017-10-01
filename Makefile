@@ -1,7 +1,12 @@
-adze:
-	clang++ -g parser.cpp generator.cpp lexer.cpp `llvm-config --cxxflags --ldflags --system-libs --libs core native` -std=c++14 -O3 -o adze
+files = parser.cpp generator.cpp lexer.cpp
+llvm = `llvm-config --cxxflags --ldflags --system-libs --libs core native`
+flags = -std=c++14 -O2 -o adze
 
-.PHONY:	clean
+clang:
+	clang++ $(files) $(llvm) $(flags)
+
+gcc:
+	g++ $(files) $(llvm) $(flags)
 
 clean:
 	rm -f adze

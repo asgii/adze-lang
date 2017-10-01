@@ -975,12 +975,6 @@ int main(int argc, char** argv)
 
    prs.Parse(toks);
 
-   prs.print();
-
-   //Log::print();
-
-   //prs.print();
-
    prs.Generate();
 
    Log::print();
