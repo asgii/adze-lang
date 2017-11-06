@@ -186,6 +186,7 @@ public:
    void push(token tok);
    size_t size() const;
    token operator[] (size_t index);
+   const token operator[] (size_t index) const;
 
    friend ostream& operator<< (ostream& stream, token_string& tokens)
    {

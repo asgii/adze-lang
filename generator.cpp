@@ -1,68 +1,47 @@
 #include "parser.hpp"
 #include "log.hpp"
 
-void Parser::init_LLVM()
-{
-   module = llvm::make_unique<llvm::Module>("adze", context);
-}
+#include "llvm/IR/Verifier.h"
+
+#include "VarExpression.hpp"
+#include "LitIntExpression.hpp"
+#include "NameExpression.hpp"
+#include "BinaryExpression.hpp"
+#include "StatementExpression.hpp"
+#include "RHSExpression.hpp"
+#include "CallExpression.hpp"
+#include "ReturnExpression.hpp"
+#include "SignatureExpression.hpp"
+#include "FunctionExpression.hpp"
+#include "ParenExpression.hpp"
+#include "AssignExpression.hpp"
+#include "InitVarExpression.hpp"
 
 void Parser::Generate()
 {
-   init_LLVM();
-
    for (unsigned int i = 0; i < parsed.size(); ++i)
    {
-      generated.push_back(parsed[i]->Generate(*this));
+      generated.push_back(parsed[i]->Generate(scope, build, ParseInfo(build)));
    }
-
-   //
-   module->print(llvm::errs(), nullptr); //
-   //
 }
 
-llvm::Value* LitIntExpression::Generate(Parser& prs)
+llvm::Value* LitIntExpression::Generate(ParseScope& scope, ParseBuild& build, ParseInfo info)
 {
-   return llvm::ConstantInt::get(prs.context,
+   return llvm::ConstantInt::get(build.GetContext(),
 				 llvm::APInt(32, (uint64_t) value));
 				 //Must also specify if signed
 }
 
-llvm::Value* VarExpression::Generate(Parser& prs)
+llvm::Value* VarExpression::Generate(ParseScope& scope, ParseBuild& build, ParseInfo info)
 {
-   /*
-     Current thoughts: VarExpression shouldn't just be some
-     notekeeping for making the expression tree - it should primarily
-     be a generator.
-
-     It should represent specifically (some grammatical expression
-     that resolves to) an address at the time of the
-     enclosing Expressions' (real, not IR) instructions' execution
-     (and therefore that address should have a value specific to that
-     time). It should be able to be used both as an lvalue and
-     rvalue. It should have a type (or an intended type - after all,
-     compilation might fail), so the value can be used in both those
-     ways.
-
-     int a = b + 1020303;
-     ^^^^^   ^   ^not a VarExpression
-     ^^^^^^^^^two VarExpressions; b implicitly carries a type too
-
-     Note that other expressions, e.g. subordinate to a
-     SignatureExpression, can simply be for notekeeping; recording the
-     type of returns, for example, doesn't involve any address.
-     (Though equally, you could just have the SignatureExpression
-     parse those types itself without calling a subordinate expression
-     to do it).
-   */
-
    //By default return value, not pointer; exceptions won't call
    //Generate, but GenerateLHS.
-   return GenerateRHS(prs);
+   return GenerateRHS(scope, build, info);
 }
 
-llvm::Value* VarExpression::GenerateLHS(Parser& prs)
+llvm::Value* VarExpression::GenerateLHS(ParseScope& scope, ParseBuild& build, ParseInfo info)
 {
-   llvm::AllocaInst* addr = prs.is_in_scope(varName);
+   llvm::AllocaInst* addr = scope.is_in_scope(varName);
 
    if (!addr)
    {
@@ -77,9 +56,9 @@ llvm::Value* VarExpression::GenerateLHS(Parser& prs)
    else return addr;
 }
 
-llvm::Value* VarExpression::GenerateRHS(Parser& prs)
+llvm::Value* VarExpression::GenerateRHS(ParseScope& scope, ParseBuild& build, ParseInfo info)
 {
-   llvm::AllocaInst* addr = prs.is_in_scope(varName);
+   llvm::AllocaInst* addr = scope.is_in_scope(varName);
 
    if (!addr)
    {
@@ -93,7 +72,7 @@ llvm::Value* VarExpression::GenerateRHS(Parser& prs)
    else
    {
       //TODO: use the type-specific CreateLoad
-      return prs.builder.CreateLoad(addr, varName);
+      return build.GetBuilder().CreateLoad(addr, varName);
    }
 }
 
@@ -103,12 +82,12 @@ llvm::Value* VarExpression::GenerateRHS(Parser& prs)
   of some kind. These just allocate things to be assigned to.
 */
 
-llvm::Value* InitVarExpression::Generate(Parser& prs)
+llvm::Value* InitVarExpression::Generate(ParseScope& scope, ParseBuild& build, ParseInfo info)
 {
    //These are for inline declarations of variables.
 
    //Check not already in scope
-   if (prs.is_in_scope(varName))
+   if (scope.is_in_scope(varName))
    {
       Log::log_error(Error(0, 0,
 			   string("Variable name '" + varName + "' is already used in the scope it is initialised in.")));
@@ -116,24 +95,25 @@ llvm::Value* InitVarExpression::Generate(Parser& prs)
    }
 
    //This adds to scope, too.
-   llvm::AllocaInst* addr = prs.allocate_instruction(prs.GetType(typName),
-						     varName);
+   llvm::AllocaInst* addr = build.allocate_instruction(scope,
+						       info.GetType(typName),
+						       varName);
 
    //Return pointer, not value, because if anything it will be on the
    //left hand of an assign; a value will be dumped in the pointer.
    return addr;
 }
 
-llvm::Value* InitVarExpression::GenerateLHS(Parser& prs)
+llvm::Value* InitVarExpression::GenerateLHS(ParseScope& scope, ParseBuild& build, ParseInfo info)
 {
-   return Generate(prs);
+   return Generate(scope, build, info);
 }
 
-llvm::Value* CallExpression::Generate(Parser& prs)
+llvm::Value* CallExpression::Generate(ParseScope& scope, ParseBuild& build, ParseInfo info)
 {
    //This is a global function table. Could add checks (possibly in
    //the llvm API?) for privacy etc.
-   llvm::Function* called = prs.module->getFunction(name);
+   llvm::Function* called = build.GetModule()->getFunction(name);
 
    if (!called)
    {
@@ -153,7 +133,7 @@ llvm::Value* CallExpression::Generate(Parser& prs)
 
    for (unsigned int i = 0; i < args.size(); ++i)
    {
-      argValues.push_back(args[i]->Generate(prs));
+      argValues.push_back(args[i]->Generate(scope, build, info));
 
       //Check each as you go along
       if (!argValues.back())
@@ -165,13 +145,13 @@ llvm::Value* CallExpression::Generate(Parser& prs)
       }
    }
 
-   return prs.builder.CreateCall(called, argValues, "call");
+   return build.GetBuilder().CreateCall(called, argValues, "call");
 }
 
-llvm::Value* BinaryExpression::Generate(Parser& prs)
+llvm::Value* BinaryExpression::Generate(ParseScope& scope, ParseBuild& build, ParseInfo info)
 {
-   llvm::Value* left = lhs->Generate(prs);
-   llvm::Value* right = rhs->Generate(prs);
+   llvm::Value* left = lhs->Generate(scope, build, info);
+   llvm::Value* right = rhs->Generate(scope, build, info);
 
    if (!left)
    {
@@ -206,27 +186,25 @@ llvm::Value* BinaryExpression::Generate(Parser& prs)
    switch(op)
    {
       case token_kind::OP_ADD:
-	 return prs.builder.CreateAdd(left, right, "add");
+	 return build.GetBuilder().CreateAdd(left, right, "add");
 	 
       case token_kind::OP_SUB:
-	 return prs.builder.CreateSub(left, right, "sub");
+	 return build.GetBuilder().CreateSub(left, right, "sub");
 
       case token_kind::OP_MUL:
-	 return prs.builder.CreateMul(left, right, "mul");
+	 return build.GetBuilder().CreateMul(left, right, "mul");
 
       case token_kind::OP_DIV:
-	 return prs.builder.CreateSDiv(left, right, "div");
+	 return build.GetBuilder().CreateSDiv(left, right, "div");
 
       case token_kind::OP_MOD:
 	 //NB that 'signed remainder' is not the same as modulo.
-	 return prs.builder.CreateURem(left, right, "mod");
+	 return build.GetBuilder().CreateURem(left, right, "mod");
 
       case token_kind::OP_EXP:
 	 //TODO: for loop
-
       case token_kind::OP_ROOT:
 	 //TODO: ditto
-
       default:
       {
 	 Log::log_error(Error(0, 0,
@@ -236,17 +214,17 @@ llvm::Value* BinaryExpression::Generate(Parser& prs)
       }
    }
 
-   //Could handle overloads, etc.
+   //TODO Could handle overloads, etc.
 }
 
-llvm::Value* FunctionExpression::Generate(Parser& prs)
+llvm::Value* FunctionExpression::Generate(ParseScope& scope, ParseBuild& build, ParseInfo info)
 {
    //Only generate the signature if it hasn't already been done.
-   llvm::Function* func = (llvm::Function*) prs.module->getFunction(signature->GetFuncName());
+   llvm::Function* func = (llvm::Function*) build.GetModule()->getFunction(signature->GetFuncName());
 
    if (!func)
    {
-      func = (llvm::Function*) signature->Generate(prs);
+      func = (llvm::Function*) signature->Generate(scope, build, info);
 
       if (!func)
       {
@@ -271,18 +249,18 @@ llvm::Value* FunctionExpression::Generate(Parser& prs)
    }
 
    //Body (don't do it in separate function because needs to call sig)
-   llvm::BasicBlock* block = llvm::BasicBlock::Create(prs.context,
+   llvm::BasicBlock* block = llvm::BasicBlock::Create(build.GetContext(),
 						      "entry",
 						      (llvm::Function*) func);
 
-   prs.builder.SetInsertPoint(block);
+   build.GetBuilder().SetInsertPoint(block);
 
    //Special handling for declaration of params from signature.
    //(Declarations of temporaries in body are done on the fly.)
 
    //You have to put the params into scope.
    //(TODO: make names include type and mutability info.)
-   prs.push_scope();
+   scope.push_scope();
    //Isn't this overkill unless there's nesting -functions-...?
    //Remember though C scopes {..}
 
@@ -312,14 +290,15 @@ llvm::Value* FunctionExpression::Generate(Parser& prs)
       token_kind paramType = signature->GetParamType(i);
 
       //(This adds to scope too)
-      llvm::AllocaInst* alloc = prs.allocate_instruction(prs.GetType(paramType),
-							 signature->GetParamName(i));
+      llvm::AllocaInst* alloc = build.allocate_instruction(scope,
+							   info.GetType(paramType),
+							   signature->GetParamName(i));
 
       //Store to that variable
       //Tbh might want to just replace this with a const variable
       //stack,
       //since it's not obvious how extra instructions are helping here.
-      prs.builder.CreateStore(&(*it), alloc);
+      build.GetBuilder().CreateStore(&(*it), alloc);
    }
 
    //Actual generation of the statements
@@ -334,13 +313,13 @@ llvm::Value* FunctionExpression::Generate(Parser& prs)
       //(or, make a temporary Builder with its own insert-point- but
       //then they'd have to pass them on and back)
 
-      statements[i]->Generate(prs);
+      statements[i]->Generate(scope, build, info);
    }
 
    //Should now be back in entry block.
 
    //Pop scoped names
-   prs.pop_scope();
+   scope.pop_scope();
 
    //Might already be a return (in this block).
    //TODO: since stmts are meant to be expressions, they should all be
@@ -348,7 +327,7 @@ llvm::Value* FunctionExpression::Generate(Parser& prs)
    //should be able to just check the last one is a return.
    if (signature->IsVoid())
    {
-      prs.builder.CreateRetVoid();
+      build.GetBuilder().CreateRetVoid();
    }
 
    //NB if it isn't void, requires explicit mention of what to return
@@ -371,7 +350,7 @@ llvm::Value* FunctionExpression::Generate(Parser& prs)
    else return func;
 }
 
-llvm::Value* ReturnExpression::Generate(Parser& prs)
+llvm::Value* ReturnExpression::Generate(ParseScope& scope, ParseBuild& build, ParseInfo info)
 {
    //Check # of args and types, too
    //But this can only be done in the context of a function...
@@ -386,7 +365,7 @@ llvm::Value* ReturnExpression::Generate(Parser& prs)
 
       for (unsigned int i = 0; i < rets.size(); ++i)
       {
-	 vals[i] = rets[i]->Generate(prs);
+	 vals[i] = rets[i]->Generate(scope, build, info);
 
 	 if (!vals[i])
 	 {
@@ -397,16 +376,16 @@ llvm::Value* ReturnExpression::Generate(Parser& prs)
 	 }
       }
 
-      return prs.builder.CreateAggregateRet(vals, rets.size());
+      return build.GetBuilder().CreateAggregateRet(vals, rets.size());
    }
 
    else
    {
-      return prs.builder.CreateRetVoid();
+      return build.GetBuilder().CreateRetVoid();
    }
 }
 
-llvm::Function* SignatureExpression::Generate(Parser& prs)
+llvm::Function* SignatureExpression::Generate(ParseScope& scope, ParseBuild& build, ParseInfo info)
 {
    vector<llvm::Type*> parArgs;
    
@@ -414,7 +393,7 @@ llvm::Function* SignatureExpression::Generate(Parser& prs)
    {
       const token& typ = GetParamType(i);
 
-      llvm::Type* typePtr = prs.GetType(typ.GetKind());
+      llvm::Type* typePtr = info.GetType(typ.GetKind());
 
       if (!typePtr)
 	 break;
@@ -436,7 +415,7 @@ llvm::Function* SignatureExpression::Generate(Parser& prs)
 	       return nullptr;
 	    }
 	 }
-	 */
+       */
    }
 
    llvm::FunctionType* funcType = nullptr;
@@ -451,24 +430,24 @@ llvm::Function* SignatureExpression::Generate(Parser& prs)
       for (unsigned int i = 0; i < rets.size(); ++i)
       {
 	 if (rets[i] == "int")
-	 { returnTypes[i] = llvm::Type::getInt32Ty(prs.context); }
+	 { returnTypes[i] = llvm::Type::getInt32Ty(build.GetContext()); }
       
 	 else if (rets[i] == "float")
-	 { returnTypes[i] = llvm::Type::getFloatTy(prs.context); }
+	 { returnTypes[i] = llvm::Type::getFloatTy(build.GetContext()); }
 
 	 //TODO string
       }
 
-      funcType = llvm::FunctionType::get(llvm::StructType::get(prs.context,
-										   returnTypes,
-										   false), //whether packed or not
-							     parArgs,
-							     false);
+      funcType = llvm::FunctionType::get(llvm::StructType::get(build.GetContext(),
+							       returnTypes,
+							       false), //whether packed or not
+					 parArgs,
+					 false);
    }
 
    else
    {
-      funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(prs.context),
+      funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(build.GetContext()),
 					 parArgs,
 					 false);
    }
@@ -476,7 +455,7 @@ llvm::Function* SignatureExpression::Generate(Parser& prs)
    llvm::Function* func = llvm::Function::Create(funcType,
 						 llvm::Function::ExternalLinkage,
 						 funcName,
-						 prs.module.get());
+						 build.GetModule().get());
 
    //Set name of params
    unsigned int i = 0;
@@ -493,7 +472,7 @@ llvm::Function* SignatureExpression::Generate(Parser& prs)
    return func;
 }
 
-llvm::Value* AssignExpression::Generate(Parser& prs)
+llvm::Value* AssignExpression::Generate(ParseScope& scope, ParseBuild& build, ParseInfo info)
 {
    /*
      As above, this can either be a var assigned to a var, or a ref
@@ -515,8 +494,8 @@ llvm::Value* AssignExpression::Generate(Parser& prs)
 
      Do lhs first in case it's an init; it will add to scope.
     */
-   llvm::Value* l = lhs->GenerateLHS(prs);
-   llvm::Value* r = rhs->Generate(prs);
+   llvm::Value* l = lhs->GenerateLHS(scope, build, info);
+   llvm::Value* r = rhs->Generate(scope, build, info);
 
    if (!r)
    {
@@ -542,6 +521,6 @@ llvm::Value* AssignExpression::Generate(Parser& prs)
       return nullptr;
    }
    
-   return prs.builder.CreateStore(r, //val
-				  l); //ptr
+   return build.GetBuilder().CreateStore(r, //val
+					 l); //ptr
 }

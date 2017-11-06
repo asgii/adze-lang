@@ -25,6 +25,11 @@ token token_string::operator[] (size_t index)
    return toks[index];
 }
 
+const token token_string::operator[] (size_t index) const
+{
+   return toks[index];
+}
+
 char lexer::next_char()
 {
    char res;
@@ -396,15 +401,3 @@ token_string lexer::lex(char* str)
       
    return result;
 }
-
-/*
-//This is just a test
-int main(int argc, char** argv)
-{
-   lexer lexer;
-
-   token_string toks = lexer.lex(argv[1]);
-
-   cout << toks;
-}
-*/
