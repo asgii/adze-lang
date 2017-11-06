@@ -1,9 +1,9 @@
 #pragma once
 
-#include "parser.hpp"
-#include "log.hpp"
+#include "../Parser.hpp"
+#include "../log.hpp"
 
-#include "llvm/IR/Value.h"
+#include "../../llvm/IR/Value.h"
 
 #include <iostream>
 #include <string>

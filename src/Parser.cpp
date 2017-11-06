@@ -1,8 +1,9 @@
-#include "parser.hpp"
+#include "Parser.hpp"
 
 #include "log.hpp"
 
-#include "FunctionExpression.hpp"
+//for top-level parsing
+#include "exprs/subexprs/FunctionExpression.hpp"
 
 //for llvm::errs() - hopefully temporary
 #include "llvm/Support/raw_ostream.h"

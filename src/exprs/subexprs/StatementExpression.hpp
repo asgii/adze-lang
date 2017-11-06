@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Expression.hpp"
+#include "../Expression.hpp"
 
 /*
   This doesn't generate anything - it's effectively a helper class.

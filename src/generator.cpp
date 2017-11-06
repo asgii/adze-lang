@@ -1,21 +1,23 @@
-#include "parser.hpp"
+#include "Parser.hpp"
 #include "log.hpp"
 
 #include "llvm/IR/Verifier.h"
 
-#include "VarExpression.hpp"
-#include "LitIntExpression.hpp"
-#include "NameExpression.hpp"
-#include "BinaryExpression.hpp"
-#include "StatementExpression.hpp"
-#include "RHSExpression.hpp"
-#include "CallExpression.hpp"
-#include "ReturnExpression.hpp"
-#include "SignatureExpression.hpp"
-#include "FunctionExpression.hpp"
-#include "ParenExpression.hpp"
-#include "AssignExpression.hpp"
-#include "InitVarExpression.hpp"
+//Here and eg in subexpr .cpp files subexprs are included to use their
+//static functions/make_uniques without incurring cost of including in .hpps.
+#include "exprs/subexprs/VarExpression.hpp"
+#include "exprs/subexprs/LitIntExpression.hpp"
+#include "exprs/subexprs/NameExpression.hpp"
+#include "exprs/subexprs/BinaryExpression.hpp"
+#include "exprs/subexprs/StatementExpression.hpp"
+#include "exprs/subexprs/RHSExpression.hpp"
+#include "exprs/subexprs/CallExpression.hpp"
+#include "exprs/subexprs/ReturnExpression.hpp"
+#include "exprs/subexprs/SignatureExpression.hpp"
+#include "exprs/subexprs/FunctionExpression.hpp"
+#include "exprs/subexprs/ParenExpression.hpp"
+#include "exprs/subexprs/AssignExpression.hpp"
+#include "exprs/subexprs/InitVarExpression.hpp"
 
 void Parser::Generate()
 {

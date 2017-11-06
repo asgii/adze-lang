@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Expression.hpp"
+#include "../Expression.hpp"
 
 /*
   Probably just a definition of a variable: its type and its name.
