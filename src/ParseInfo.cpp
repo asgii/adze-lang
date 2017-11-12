@@ -1,12 +1,13 @@
 #include "ParseInfo.hpp"
 
-const map<token_kind, int> ParseInfo::precedences = {{token_kind::OP_ADD, 8},
-						     {token_kind::OP_SUB, 7},
-						     {token_kind::OP_MUL, 9},
-						     {token_kind::OP_DIV, 11},
-						     {token_kind::OP_MOD, 10},
-						     {token_kind::OP_EXP, 13},
-						     {token_kind::OP_ROOT, 12}};
+const std::map<token_kind, int> ParseInfo::precedences =
+{{token_kind::OP_ADD, 8},
+ {token_kind::OP_SUB, 7},
+ {token_kind::OP_MUL, 9},
+ {token_kind::OP_DIV, 11},
+ {token_kind::OP_MOD, 10},
+ {token_kind::OP_EXP, 13},
+ {token_kind::OP_ROOT, 12}};
 
 ParseInfo::ParseInfo(ParseBuild& build)
    : context (build.GetContext())
@@ -14,12 +15,12 @@ ParseInfo::ParseInfo(ParseBuild& build)
 }
 
 bool
-ParseInfo::get_literal_int(const string& str,
+ParseInfo::get_literal_int(const std::string& str,
 			     int& result)
 {
    //These could be replaced by checking exceptions on stoi().  But
    //as it is, might be that there are more stringent requirements
-   //for ints than in C++.
+   //for ints in adze than in C++.
 
    //TODO: Check over size? Note that stoi might throw out_of_range exception.
 
@@ -42,7 +43,7 @@ ParseInfo::get_literal_int(const string& str,
       }
    }
 
-   result = stoi(str);
+   result = std::stoi(str);
 
    return false;
 }
@@ -58,7 +59,7 @@ ParseInfo::get_binary_precedence(const token& tok) const
 
 
 bool
-ParseInfo::is_valid_func_name(const string& str) const
+ParseInfo::is_valid_func_name(const std::string& str) const
 {
    //TODO
 
@@ -66,7 +67,7 @@ ParseInfo::is_valid_func_name(const string& str) const
 }
 
 bool
-ParseInfo::is_valid_type_name(const string& str) const
+ParseInfo::is_valid_type_name(const std::string& str) const
 {
    //TODO
       
@@ -133,7 +134,7 @@ ParseInfo::is_rhs_end(const token_kind& tok) const
 }
 
 llvm::Type*
-ParseInfo::GetType(const string str)
+ParseInfo::GetType(const std::string str)
 {
    llvm::Type* ty = nullptr;
 
@@ -170,7 +171,7 @@ ParseInfo::GetType(const token_kind tok)
 }
 
 size_t
-ParseInfo::GetTypeSize(const string& str) const
+ParseInfo::GetTypeSize(const std::string& str) const
 {
    if (str == "int")
       return 32;

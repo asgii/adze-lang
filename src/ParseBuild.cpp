@@ -27,38 +27,62 @@ ParseBuild::allocate_instruction(ParseScope& scope,
    /*
      Insert instruction to allocate stack space for (mutable)
      variable - but insert it at the start of the current block,
-     since that's what LLVM advises to do.
+     since that's what LLVM advises to do. 
 
-     Note it'd be nice if it still inserted them sequentially after
-     the previous allocations. That way there'd be an obvious
-     order, in assembly, from params to inits.
-     You'd have to do a while() with the iterator, checking for
-     non-allocates.
-     (Or you could save and increment a pointer/iterator while
-     making allocates - here, maybe?)
+     Actually it's not quite the
+     start - it's at the end of a section, at the start of the block,
+     where all such allocate instructions are put.
    */
 
    //Get current location for insertion of instructions, to return
    //to
    llvm::BasicBlock::iterator oldLoc = builder.GetInsertPoint();
 
+   /*
+     NB: same block. So this works with blocks other than function
+     entries; scope would be affected by inserting an init into the
+     parent block
+     
+     ++allocInsert because allocInsert is the one previous.
+     The alternative doesn't work bc inserting directly 'after' the
+     allocInsert point changes it (perhaps because LLVM thinks of
+     itself as inserting instructions 'before' a point, not after an
+     instruction).
+     As a result allocInsert would equal oldLoc at all points,
+     defeating the entire point.
+   */
    builder.SetInsertPoint(builder.GetInsertBlock(),
-			  builder.GetInsertBlock()->begin());
-
+			  ++allocInsert);
+   
    llvm::AllocaInst* alloc = builder.CreateAlloca(typ,
-						  nullptr, //array
-						  //size
+						  nullptr,
 						  nam);
 
-   //Restore old point of insertion
-   //NB: same block. So this works with blocks other than function
-   //entries; scope would be affected by inserting an init into the
-   //parent block
+   //set allocInsert to -before- the last alloc instruction.
+   allocInsert = alloc->getIterator();
+
+   //Restore old point of insertion (which hasn't changed relative to
+   //the instructions)
    builder.SetInsertPoint(builder.GetInsertBlock(),
 			  oldLoc);
 
-   //Add to scope
    scope.push_to_scope(nam, alloc);
 
    return alloc;
+}
+
+void
+ParseBuild::BuildFunction(ParseScope& scope, llvm::Function* func)
+{
+   llvm::BasicBlock* block = llvm::BasicBlock::Create(context,
+						      "entry",
+						      func);
+
+   builder.SetInsertPoint(block);
+
+   //Initialise allocInsert (pointer to last alloc at start of the
+   //entry block)
+   allocInsert = block->begin();
+
+   scope.push_scope();
 }

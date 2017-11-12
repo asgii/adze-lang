@@ -250,21 +250,10 @@ llvm::Value* FunctionExpression::Generate(ParseScope& scope, ParseBuild& build, 
       }
    }
 
-   //Body (don't do it in separate function because needs to call sig)
-   llvm::BasicBlock* block = llvm::BasicBlock::Create(build.GetContext(),
-						      "entry",
-						      (llvm::Function*) func);
-
-   build.GetBuilder().SetInsertPoint(block);
+   build.BuildFunction(scope, func);
 
    //Special handling for declaration of params from signature.
    //(Declarations of temporaries in body are done on the fly.)
-
-   //You have to put the params into scope.
-   //(TODO: make names include type and mutability info.)
-   scope.push_scope();
-   //Isn't this overkill unless there's nesting -functions-...?
-   //Remember though C scopes {..}
 
    //This should be different depending on whether it's a value or a ref...
 
@@ -285,8 +274,8 @@ llvm::Value* FunctionExpression::Generate(ParseScope& scope, ParseBuild& build, 
 	might be better anyway (if use of a Value implies
 	pass-by-copy).
 
-	(I believe LLVM advises you do this anyway, even if they
-	shouldn't be mutable, for ease of optimisation.)
+	(I believe LLVM advises you do this anyway (even if they
+	shouldn't be mutable), for ease of optimisation.)
       */
 
       token_kind paramType = signature->GetParamType(i);

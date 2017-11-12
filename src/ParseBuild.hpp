@@ -9,8 +9,6 @@
 
 #include "ParseScope.hpp"
 
-using namespace std;
-
 class ParseBuild
 /*
   All of the LLVM stuff required for generation from a finished parse tree.
@@ -20,6 +18,10 @@ private:
    llvm::LLVMContext context;
    llvm::IRBuilder<> builder;
    unique_ptr<llvm::Module> module;
+
+   //Insertion point after last alloc in this block
+   //(actually, it's one before that- see .cpp)
+   llvm::BasicBlock::iterator allocInsert;
    
 public:
 
@@ -35,4 +37,7 @@ public:
 
    llvm::AllocaInst* allocate_instruction(ParseScope& scope,
 					  llvm::Type* typ, const string& nam);
+
+   //Advantage of having this here is it can initialise allocInsert
+   void BuildFunction(ParseScope& scope, llvm::Function* func);
 };
