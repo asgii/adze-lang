@@ -4,13 +4,6 @@
 
 #include <iostream>
 
-/*
-  This is a stub: simple enough that it can just be parsed by callers,
-  through its constructor.
-
-  TODO still might want to give it a Parse for standardisation's sake.
-*/
-
 class CallExpression : public Expression
 {
 private:
@@ -22,6 +15,9 @@ public:
 		  vector<unique_ptr<Expression>> argsGiven);
 
    ostream& print (ostream& stream) override;
+
+   static unique_ptr<Expression> Parse(token_stream& str,
+				       ParseInfo info);
 
    llvm::Value* Generate(ParseScope& scope, ParseBuild& build, ParseInfo info) override;
 };

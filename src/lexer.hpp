@@ -100,7 +100,7 @@ public:
    token_kind GetKind() const;
    string GetValue() const;
 
-   friend ostream& operator<< (ostream& stream, token& tok)
+   friend ostream& operator<< (ostream& stream, const token& tok)
    {
       switch (tok.GetKind())
       {

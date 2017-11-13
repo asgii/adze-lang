@@ -33,6 +33,7 @@ public:
    int get_binary_precedence(const token& tok) const;
    bool is_valid_func_name(const std::string& str) const;
    bool is_valid_type_name(const std::string& str) const;
+   //TODO this one is badly named; includes NAME tokens that could be types
    bool is_type_token(const token& tok) const;
    bool is_literal(const token_kind& tok) const;
    bool is_rhs_end(const token_kind& tok) const;

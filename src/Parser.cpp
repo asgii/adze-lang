@@ -19,21 +19,20 @@ token_stream::token_stream()
 token_stream::token_stream(token_string nStr)
    : str (nStr)
    , pos (0)
-   , cur (token(token_kind::INVALID))
+   , cur (str.size() ? str[0] : token(token_kind::END))
 {
-   get();
 }
 
 const token
 token_stream::get()
 {
    token tok = token(token_kind::END);
-
-   if (pos <= (str.size() - 1))
+   
+   if ((pos + 1) < str.size())
    {
-      tok = str[pos];
-
       ++pos;
+
+      tok = str[pos];
    }
       
    return cur = tok;
@@ -42,7 +41,7 @@ token_stream::get()
 const token
 token_stream::peek() const
 {
-   if (pos < (str.size() - 1))
+   if ((pos + 1) < str.size())
       return str[pos + 1];
 
    else return token(token_kind::END);
@@ -119,7 +118,7 @@ int main(int argc, char** argv)
 
    prs.Generate();
 
-   prs.printIR();
+   //prs.printIR();
 
    Log::print();
 

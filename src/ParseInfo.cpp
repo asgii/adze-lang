@@ -86,8 +86,12 @@ ParseInfo::is_type_token(const token& tok) const
       case token_kind::TYPE_STRING:
 	 return true;
 
+      //This one seems to be because it -could- be a name of a type
       case token_kind::NAME:
       {
+	 //TODO isn't this inappropriate? Probably here just as a
+	 //placeholder
+
 	 return is_valid_func_name(tok.GetValue());
       }
 	 

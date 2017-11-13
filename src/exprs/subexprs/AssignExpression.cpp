@@ -50,8 +50,7 @@ AssignExpression::Parse(token_stream& str,
       return nullptr;
    }
    
-   unique_ptr<Expression> right = RHSExpression::Parse(str,
-						       info);
+   unique_ptr<Expression> right = RHSExpression::Parse(str, info);
 
    if (right == nullptr)
    {
