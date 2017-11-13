@@ -7,13 +7,25 @@ int func(int a, int b)
 	return c;
 }
 
+/*
+(int, int) func3(int a, int b) //Yet to do
+{
+
+}
+*/
+
 void func2()
 {
 //	int a = 123; //Yet to do
+
+	int a;
+	int b;
 
 	int d;
 
 	int e = d;
 
-//	int e = func(a, b); //Yet to do
+	e = func(a, b);
+
+// 	a, b = func3(d, e); //Yet to do
 }

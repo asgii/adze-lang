@@ -118,7 +118,7 @@ int main(int argc, char** argv)
 
    prs.Generate();
 
-   //prs.printIR();
+   prs.printIR();
 
    Log::print();
 

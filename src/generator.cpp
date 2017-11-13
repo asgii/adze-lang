@@ -147,7 +147,16 @@ llvm::Value* CallExpression::Generate(ParseScope& scope, ParseBuild& build, Pars
       }
    }
 
-   return build.GetBuilder().CreateCall(called, argValues, "call");
+   //Indices into struct returned by call
+   vector<unsigned int> indices = {0};
+
+   //ExtractValue because functions return structs (in all
+   //cases). This will need to be changed once tuples are properly
+   //supported (because you should need to extract more than one
+   //value); see comments in AssignExpression::Generate.
+   return build.GetBuilder().CreateExtractValue(build.GetBuilder().CreateCall(called, argValues, name),
+						indices,
+						name + "_res");
 }
 
 llvm::Value* BinaryExpression::Generate(ParseScope& scope, ParseBuild& build, ParseInfo info)
@@ -484,6 +493,22 @@ llvm::Value* AssignExpression::Generate(ParseScope& scope, ParseBuild& build, Pa
      itself. So the lhs has to -not- generate a load after all.
 
      Do lhs first in case it's an init; it will add to scope.
+
+     Things are further complicated by tuples, e.g., (a, b) = (c, d);
+     and functions which return tuples, since they'll return structs
+     (which can't simply be stored, even if they have the same bit-
+     width in principle).
+
+     In effect the assign has to match struct members on the rhs with
+     variables on the left. Eventually it will have to check the size
+     of the lhs and rhs (they'll return vector<llvm::Value*>).
+
+     The most simple way of doing this would be to store everything,
+     even singletons, in structs, and automatically
+     extract/insertvalue. Then these could be optimised away.
+
+     For now though (without tuples), I will just put the extractvalue
+     into CallExpression::Generate.
     */
    llvm::Value* l = lhs->GenerateLHS(scope, build, info);
    llvm::Value* r = rhs->Generate(scope, build, info);
